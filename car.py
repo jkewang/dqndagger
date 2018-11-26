@@ -6,12 +6,22 @@ class Car(object):
         self.vx = vx
         self.vy = 0
         self.del_t = 0.01
+        self.lastx = x
+        self.lasty = y
+        self.lastaction = 0
+        self.state = []
+        self.state_ = []
 
     def reset(self,x,y,vx):
         self.x = x
         self.y = y
         self.vx = vx
         self.vy = 0
+        self.lastx = x
+        self.lasty = y
+        self.lastaction = 0
+        self.state = []
+        self.state_ = []
         return x,y,vx,self.vy
 
     def update_v(self,a):
@@ -30,7 +40,11 @@ class Car(object):
             self.vx =self.vx
             self.vy += 0.2
 
+        self.lastaction = a
+
     def play(self):
+        self.lastx = self.x
+        self.lasty = self.y
         self.x = self.x + self.vx * self.del_t
         self.y = self.y + self.vy * self.del_t
 
