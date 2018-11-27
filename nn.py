@@ -15,41 +15,30 @@ MEMORY_COUNTER = 0
 
 N_ACTIONS = 5
 N_SLIDING = 140
-N_OTHERS = 12*10
+N_OTHERS = 4*10
 N_STATES = N_SLIDING + N_OTHERS
 MEMORY = np.zeros((MEMORY_CAPACITY, N_STATES * 2 + 3))
 
-tf_s_sliding = tf.placeholder(tf.float32, [None, 20, 7])
+tf_s_sliding = tf.placeholder(tf.float32,[None,N_SLIDING])
 tf_s_others = tf.placeholder(tf.float32, [None, N_OTHERS])
 tf_a = tf.placeholder(tf.int32, [None, ])
 tf_r = tf.placeholder(tf.float32, [None, ])
-tf_s_sliding_ = tf.placeholder(tf.float32, [None, 20, 7])
+tf_s_sliding_ = tf.placeholder(tf.float32, [None, N_SLIDING])
 tf_s_others_ = tf.placeholder(tf.float32, [None, N_OTHERS])
 input_q_values = tf.placeholder(tf.float32, [None], name='input_q_values')
 
 with tf.variable_scope('q'):
-    x_input_1 = tf.reshape(tf_s_sliding, [-1, 20, 7, 1])
-    w_conv1 = 0.01 * tf.Variable(tf.random_normal([3, 3, 1, 64]), name="w_conv1")
-    b_conv1 = tf.Variable(tf.constant(0.1, shape=[64]), "b_conv1")
-    conv1_out_0 = tf.nn.conv2d(x_input_1, w_conv1, strides=[1, 1, 1, 1], padding='SAME') + b_conv1
-    conv1_out = tf.nn.relu(conv1_out_0)
-    # pool1_out = tf.nn.max_pool(conv1_out,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
-
-    w_conv2 = 0.01 * tf.Variable(tf.random_normal([3, 3, 64, 64]), name='w_conv2')
-    b_conv2 = tf.Variable(tf.constant(0.1, shape=[64]), "b_conv2")
-    conv2_out_0 = tf.nn.conv2d(conv1_out, w_conv2, strides=[1, 1, 1, 1], padding='SAME') + b_conv2
-    conv2_out = tf.nn.relu(conv2_out_0)
-
-    w_conv3 = 0.01 * tf.Variable(tf.random_normal([3, 3, 64, 64]), name='w_conv3')
-    b_conv3 = tf.Variable(tf.constant(0.1, shape=[64]), "b_conv3")
-    conv3_out_0 = tf.nn.conv2d(conv2_out, w_conv3, strides=[1, 1, 1, 1], padding='SAME') + b_conv3
-    conv3_out = tf.nn.relu(conv3_out_0)
-    avg_out = tf.nn.avg_pool(conv3_out, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
-
-    sliding_out = tf.reshape(avg_out, [-1, 21 * 64])
+    b1w = 0.01*tf.Variable(tf.random_normal([N_SLIDING,256],name="b1w"))
+    b1b = 0.01*tf.Variable(tf.zeros([1,256]),name="b1b")
+    b1lo = tf.matmul(tf_s_sliding,b1w) + b1b
+    b1o = tf.nn.relu(b1lo)
+    b2w = 0.01*tf.Variable(tf.random_normal([256,256]),name="b2w")
+    b2b = 0.01*tf.Variable(tf.zeros([1,256]),name="b2b")
+    b2lo = tf.matmul(b1o,b2w) + b2b
+    b2o = tf.nn.relu(b2lo)
     tf_s_others = tf.reshape(tf_s_others, [-1, N_OTHERS])
 
-    input_size3 = 1344 + N_OTHERS
+    input_size3 = 256 + N_OTHERS
     output_size3 = 1024
     input_size4 = 1024
     output_size4 = 512
@@ -60,7 +49,7 @@ with tf.variable_scope('q'):
 
     b3w = 0.01 * tf.Variable(tf.random_normal([input_size3, output_size3]), name="b3w")
     b3b = tf.Variable(tf.zeros([1, output_size3]), name="b3b")
-    myreal_input = tf.concat([sliding_out, tf_s_others], 1)
+    myreal_input = tf.concat([b2o, tf_s_others], 1)
     b3lo = tf.matmul(myreal_input, b3w) + b3b
     b3o = tf.nn.relu(b3lo)
     b4w = 0.01 * tf.Variable(tf.random_normal([input_size4, output_size4]), name="b4w")
@@ -76,28 +65,17 @@ with tf.variable_scope('q'):
     q = tf.matmul(b5o, b6w) + b6b
 
 with tf.variable_scope('q_next'):
-    x_input_1 = tf.reshape(tf_s_sliding_, [-1, 20, 7, 1])
-    w_conv1 = 0.01 * tf.Variable(tf.random_normal([3, 3, 1, 64]), name="w_conv1", trainable=False)
-    b_conv1 = tf.Variable(tf.constant(0.1, shape=[64]), name="b_conv1", trainable=False)
-    conv1_out_0 = tf.nn.conv2d(x_input_1, w_conv1, strides=[1, 1, 1, 1], padding='SAME') + b_conv1
-    conv1_out = tf.nn.relu(conv1_out_0)
-    # pool1_out = tf.nn.max_pool(conv1_out,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
-
-    w_conv2 = 0.01 * tf.Variable(tf.random_normal([3, 3, 64, 64]), name='w_conv2', trainable=False)
-    b_conv2 = tf.Variable(tf.constant(0.1, shape=[64]), name="b_conv2", trainable=False)
-    conv2_out_0 = tf.nn.conv2d(conv1_out, w_conv2, strides=[1, 1, 1, 1], padding='SAME') + b_conv2
-    conv2_out = tf.nn.relu(conv2_out_0)
-
-    w_conv3 = 0.01 * tf.Variable(tf.random_normal([3, 3, 64, 64]), name='w_conv3', trainable=False)
-    b_conv3 = tf.Variable(tf.constant(0.1, shape=[64]), name="b_conv3", trainable=False)
-    conv3_out_0 = tf.nn.conv2d(conv2_out, w_conv3, strides=[1, 1, 1, 1], padding='SAME') + b_conv3
-    conv3_out = tf.nn.relu(conv3_out_0)
-    avg_out = tf.nn.avg_pool(conv3_out, ksize=[1, 3, 3, 1], strides=[1, 3, 3, 1], padding='SAME')
-
-    sliding_out = tf.reshape(avg_out, [-1, 21 * 64])
+    b1w = 0.01 * tf.Variable(tf.random_normal([N_SLIDING, 256], name="b1w"))
+    b1b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b1b")
+    b1lo = tf.matmul(tf_s_sliding_, b1w) + b1b
+    b1o = tf.nn.relu(b1lo)
+    b2w = 0.01 * tf.Variable(tf.random_normal([256, 256]), name="b2w")
+    b2b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b2b")
+    b2lo = tf.matmul(b1o, b2w) + b2b
+    b2o = tf.nn.relu(b2lo)
     tf_s_others_ = tf.reshape(tf_s_others_, [-1, N_OTHERS])
 
-    input_size3 = 1344 + N_OTHERS
+    input_size3 = 256 + N_OTHERS
     output_size3 = 1024
     input_size4 = 1024
     output_size4 = 512
@@ -108,7 +86,7 @@ with tf.variable_scope('q_next'):
 
     b3w = 0.01 * tf.Variable(tf.random_normal([input_size3, output_size3]), name="b3w", trainable=False)
     b3b = tf.Variable(tf.zeros([1, output_size3]), name="b3b", trainable=False)
-    real_input = tf.concat([sliding_out, tf_s_others_], 1)
+    real_input = tf.concat([b2o, tf_s_others_], 1)
     b3lo = tf.matmul(real_input, b3w) + b3b
     b3o = tf.nn.relu(b3lo)
     b4w = 0.01 * tf.Variable(tf.random_normal([input_size4, output_size4]), name="b4w", trainable=False)
@@ -128,9 +106,12 @@ q_wrt_a = tf.gather_nd(params=q, indices=a_indices)
 
 loss = tf.reduce_mean(tf.squared_difference(input_q_values, q_wrt_a))
 train_op = tf.train.AdamOptimizer(LR).minimize(loss)
+
 sess = tf.Session()
 saver = tf.train.Saver()
+
 sess.run(tf.global_variables_initializer())
+
 
 def choose_action(s_sliding, s_others):
     #print(s_sliding)
@@ -149,6 +130,7 @@ def choose_action(s_sliding, s_others):
         action = np.random.randint(0, N_ACTIONS)
     return action
 
+
 def store_transition(s_sliding, s_others, a, r, s_sliding_, s_others_, done):
     global MEMORY_COUNTER
     s_sliding = np.reshape(s_sliding, (140))
@@ -159,6 +141,7 @@ def store_transition(s_sliding, s_others, a, r, s_sliding_, s_others_, done):
     index = MEMORY_COUNTER % MEMORY_CAPACITY
     MEMORY[index, :] = transition
     MEMORY_COUNTER += 1
+
 
 def learn():
     global LEARNING_STEP_COUNTER
@@ -172,13 +155,13 @@ def learn():
     b_memory = MEMORY[sample_index, :]
 
     b_s_sliding = b_memory[:, :N_SLIDING]
-    b_s_sliding = np.reshape(b_s_sliding, (32, 20, 7))
+    b_s_sliding = np.reshape(b_s_sliding, [-1, 140])
     b_s_others = b_memory[:, N_SLIDING:N_STATES]
     b_a = b_memory[:, N_STATES].astype(int)
     b_r = b_memory[:, N_STATES + 1]
     b_done = b_memory[:, N_STATES + 2].astype(int)
     b_s_sliding_ = b_memory[:, -N_STATES:-N_OTHERS]
-    b_s_sliding_ = np.reshape(b_s_sliding_, (32, 20, 7))
+    b_s_sliding_ = np.reshape(b_s_sliding_, [-1, 140])
     b_s_others_ = b_memory[:, -N_OTHERS:]
 
     q_target = []
