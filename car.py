@@ -12,6 +12,7 @@ class Car(object):
         self.state = []
         self.state_ = []
         self.ep_r = 0
+        self.done = 0
 
     def reset(self,x,y,vx):
         self.x = x
@@ -24,6 +25,7 @@ class Car(object):
         self.state = []
         self.state_ = []
         self.ep_r = 0
+        self.done = 0
 
         return x,y,vx,self.vy
 

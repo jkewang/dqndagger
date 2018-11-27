@@ -3,38 +3,39 @@ import nn
 import random
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
-class env(object):
+class Env(object):
     def __init__(self):
         self.Cars = []
         #generte 9 cars' position and velocity
-
+        print("initialing")
         #left 3:
-        left_rand_1 = float(random.randint(500))/100
-        left_rand_2 = float(random.randint(500))/100
+        left_rand_1 = float(random.randint(0,500))/100
+        left_rand_2 = float(random.randint(0,500))/100
         while abs(left_rand_2-left_rand_1)<1:
-            left_rand_2 = float(random.randint(500))/100
-        left_rand_3 = float(random.randint(500))/100
-        while(abs(left_rand_1-left_rand_3)<1 or (left_rand_2-left_rand_3)<1):
-            left_rand_3 = float(random.randint(500)/100)
-
+            left_rand_2 = float(random.randint(0,500))/100
+        left_rand_3 = float(random.randint(0,500))/100
+        while(abs(left_rand_1-left_rand_3)<1 or abs(left_rand_2-left_rand_3)<1):
+            left_rand_3 = float(random.randint(0,500))/100
+            #print(left_rand_3)
         #center 3:
-        center_rand_1 = float(random.randint(500))/100
-        center_rand_2 = float(random.randint(500))/100
+        center_rand_1 = float(random.randint(0,500))/100
+        center_rand_2 = float(random.randint(0,500))/100
         while abs(center_rand_2-center_rand_1)<1:
-            center_rand_2 = float(random.randint(500))/100
-        center_rand_3 = float(random.randint(500))/100
-        while(abs(center_rand_1-center_rand_3)<1 or (center_rand_2-center_rand_3)<1):
-            center_rand_3 = float(random.randint(500)/100)
+            center_rand_2 = float(random.randint(0,500))/100
+        center_rand_3 = float(random.randint(0,500))/100
+        while(abs(center_rand_1-center_rand_3)<1 or abs(center_rand_2-center_rand_3)<1):
+            center_rand_3 = float(random.randint(0,500))/100
 
         #right 3:
-        right_rand_1 = float(random.randint(500))/100
-        right_rand_2 = float(random.randint(500))/100
+        right_rand_1 = float(random.randint(0,500))/100
+        right_rand_2 = float(random.randint(0,500))/100
         while abs(right_rand_2-right_rand_1)<1:
-            right_rand_2 = float(random.randint(500))/100
-        right_rand_3 = float(random.randint(500))/100
-        while(abs(right_rand_1-right_rand_3)<1 or (right_rand_2-right_rand_3)<1):
-            right_rand_3 = float(random.randint(500)/100)
+            right_rand_2 = float(random.randint(0,500))/100
+        right_rand_3 = float(random.randint(0,500))/100
+        while(abs(right_rand_1-right_rand_3)<1 or abs(right_rand_2-right_rand_3)<1):
+            right_rand_3 = float(random.randint(0,500))/100
 
         #initialize 9 cars:
         name_list = ["left_1","left_2","left_3","center_1","center_2","center_3","right_1","right_2","right_3"]
@@ -43,6 +44,7 @@ class env(object):
         init_v = [-2.5,-2.5,-2.5,-2,-2,-2,-1.5,-1.5,-1.5]
         for i in range(9):
             self.Cars.append(Car(name_list[i],init_x[i]+5,init_y[i],init_v[i]))
+        print("init done!")
 
     def reset(self,car):
         success_reset = 0
@@ -59,11 +61,11 @@ class env(object):
                 init_y = 4.2
                 init_v = -1.5
 
-            init_x = float(random.randint(500)/100)
+            init_x = float(random.randint(0,500)/100)+5
 
             for othercar in self.Cars:
                 if othercar != car:
-                    if abs(othercar.x - init_x) < 1.5 and abs(othercar.y - init_y) < 2.8:
+                    if abs(othercar.x - init_x) < 1 and abs(othercar.y - init_y) < 1.5:
                         success_reset = 0
 
         car = car.reset(init_x,init_y,init_v)
@@ -81,8 +83,10 @@ class env(object):
             reward,done = self.cal_reward(self.Cars[i])
             nn.store_transition(self.Cars[i].state[0],self.Cars[i].state[1],self.Cars[i].lastaction,reward,self.Cars[i].state_[0],self.Cars[i].state_[1],done)
             self.Cars[i].ep_r += reward
-            if done == 1:
-                print("ep_r:",self.Cars[i].ep_r,"epsilon:",nn.EPSILON)
+            self.Cars[i].done = done
+        for i in range(9):
+            if self.Cars[i].done == 1:
+                print("ep_r:",round(self.Cars[i].ep_r,2),"epsilon:",nn.EPSILON)
                 self.reset(self.Cars[i])
 
         if (nn.EPSILON<0.9):
@@ -107,8 +111,10 @@ class env(object):
                     indexY = int((15-relY)-0.5)
                     OccMapState[indexY,indexX] = 1.0
 
+        OccMapState = OccMapState.reshape(-1)
+
         #next is vehicle state:
-        VehicleState = [0.0 for i in range(40)]
+        VehicleState = np.zeros(40)
         for i in range(40):
             if i%4==0:
                 VehicleState[i] = car.x
@@ -129,7 +135,7 @@ class env(object):
         done = 0
         for othercar in self.Cars:
             if othercar != car:
-                if abs(othercar.x-car.x)<2.8 and abs(othercar.y-car.y)<1.5:
+                if abs(othercar.x-car.x)<1 and abs(othercar.y-car.y)<1.5:
                     collision = 1
                     break
 
@@ -143,6 +149,29 @@ class env(object):
             reward = 10
             done = 1
         else:
-            reward = 0.1
+            reward = -0.01
 
         return reward,done
+
+
+if __name__ == '__main__':
+    multi_env = Env()
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.axis("equal")
+    plt.ion()
+    turns = 0
+    while(True):
+        turns += 1
+        multi_env.step()
+        if nn.EPSILON>0.85:
+            plt.cla()
+            vehicle_x = [multi_env.Cars[i].x for i in range(9)]
+            vehicle_y = [multi_env.Cars[i].y for i in range(9)]
+            lines = ax.scatter(vehicle_x,vehicle_y,c='b',marker="*",s=200)
+            plt.pause(0.0001)
+            try:
+                ax.lines.remove(lines[0])
+            except:
+                pass
+            plt.show()
