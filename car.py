@@ -13,6 +13,7 @@ class Car(object):
         self.state_ = []
         self.ep_r = 0
         self.done = 0
+        self.waiting = 0
 
     def reset(self,x,y,vx):
         self.x = x
@@ -26,6 +27,7 @@ class Car(object):
         self.state_ = []
         self.ep_r = 0
         self.done = 0
+        self.waiting = 0
 
         return x,y,vx,self.vy
 
