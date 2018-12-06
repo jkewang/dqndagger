@@ -112,7 +112,6 @@ saver = tf.train.Saver()
 
 sess.run(tf.global_variables_initializer())
 
-
 def choose_action(s_sliding, s_others):
     #print(s_sliding)
     s_sliding = s_sliding[np.newaxis, :]

@@ -27,6 +27,7 @@ class PretrainActor(object):
         self.tf_a = tf.placeholder(tf.float32, [None, 4])
         self.sess = tf.Session()
         self.learning_step = 0
+        self.Saver = tf.train.Saver()
 
         self.filename = "pretrained_data.txt"
         self.f = open(self.filename)
@@ -137,6 +138,9 @@ class PretrainActor(object):
             s_a_list.append(self.action[index])
 
         return s_sliding_list,s_others_list,s_a_list
+
+    def save(self):
+        self.Saver.save(self.sess,'./model/model.ckpt')
 
 PA = PretrainActor()
 PA.read_data()

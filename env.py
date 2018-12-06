@@ -11,6 +11,7 @@ class Env(object):
         self.Waiting_cars = []
         self.car_nums = 9
         self.Waiting_car_nums = 0
+        self.used_car_nums = 9
         #generte 9 cars' position and velocity
         print("initialing")
         #left 3:
@@ -49,7 +50,7 @@ class Env(object):
             self.Cars.append(Car(name_list[i],init_x[i],init_y[i],init_v[i]))
         print("init done!")
 
-    def reset(self,car):
+    def reset(self,car,FROMCARS):
         success_reset = 0
         try_times = 0
         while success_reset == 0:
@@ -74,14 +75,20 @@ class Env(object):
                         success_reset = 0
 
             if try_times >= 30:
-                print("start_zone is full!")
-                self.Waiting_cars.append(car)
-                self.Cars.remove(car)
-                self.Waiting_car_nums += 1
-                self.car_nums -= 1
-                break
+                if FROMCARS==1:
+                    print("start_zone is full!")
+                    self.Waiting_cars.append(car)
+                    self.Cars.remove(car)
+                    self.Waiting_car_nums += 1
+                    self.car_nums -= 1
 
-        car = car.reset(init_x,init_y,init_v)
+                    return 0
+                else:
+                    return 0
+
+        car.reset(init_x,init_y,init_v)
+        return 1
+
 
     def step(self):
         for car in self.Cars:
@@ -102,7 +109,7 @@ class Env(object):
                 print("ep_r:",round(car.ep_r,2),"epsilon:",nn.EPSILON)
                 print("now_cars:",self.car_nums)
                 print("waiting_cars:",self.Waiting_car_nums)
-                self.reset(car)
+                success = self.reset(car,FROMCARS=1)
 
         if (nn.EPSILON<0.9):
             nn.EPSILON += 0.0000002
@@ -202,14 +209,18 @@ class Env(object):
                     if abs(othercar.x - init_x) < 2.8 and abs(othercar.y - init_y) < 1.5:
                         success_reset = 0
 
-                self.car_nums += 1
-                name = "new_car_" + str(self.car_nums-9)
-                car = Car(name, init_x, init_y, init_v)
-                self.Cars.append(car)
+            self.car_nums += 1
+            self.used_car_nums += 1
+            name = "new_car_" + str(self.used_car_nums-9)
+            car = Car(name, init_x, init_y, init_v)
+            self.Cars.append(car)
         else:
-            self.reset(self.Waiting_cars[0])
-            self.Waiting_cars.remove(self.Waiting_cars[0])
-            self.Waiting_car_nums -= 1
+            success = self.reset(self.Waiting_cars[0],FROMCARS=0)
+            if success == 1:
+                self.Cars.append(self.Waiting_cars[0])
+                self.car_nums += 1
+                self.Waiting_cars.remove(self.Waiting_cars[0])
+                self.Waiting_car_nums -= 1
 
 if __name__ == '__main__':
     multi_env = Env()
@@ -222,7 +233,9 @@ if __name__ == '__main__':
         turns += 1
         multi_env.step()
         #print(multi_env.car_nums)
-        if nn.EPSILON>0.85:
+        if nn.EPSILON>0.9:
+            nn.saver.save(nn.sess, './model.ckpt', global_step=turns + 1)
+
             plt.cla()
             vehicle_x = [car.x for car in multi_env.Cars]
             vehicle_y = [car.y for car in multi_env.Cars]
