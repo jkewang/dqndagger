@@ -27,7 +27,6 @@ class PretrainActor(object):
         self.tf_a = tf.placeholder(tf.float32, [None, 4])
         self.sess = tf.Session()
         self.learning_step = 0
-        self.Saver = tf.train.Saver()
 
         self.filename = "pretrained_data.txt"
         self.f = open(self.filename)
@@ -84,7 +83,7 @@ class PretrainActor(object):
                 self.action.append([0.0,0.0,0.0,1.0])
 
     def build_actor(self):
-        with tf.variable_scope("actor"):
+        with tf.variable_scope("actor/target"):
             b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256], name="b1w"))
             b1b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b1b")
             b1lo = tf.matmul(self.tf_s_sliding, b1w) + b1b
@@ -117,8 +116,43 @@ class PretrainActor(object):
             b5o = tf.nn.relu(b5lo)
             b6w = 0.01 * tf.Variable(tf.random_normal([input_size6, output_size6]), name="b6w")
             b6b = tf.Variable(tf.zeros([1, output_size6]), name="b6b")
-            self.a = tf.nn.softmax(tf.matmul(b5o,b6w)+b6b)
-        return self.a
+            a = tf.nn.softmax(tf.matmul(b5o,b6w)+b6b)
+        with tf.variable_scope("actor/eval"):
+            b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256], name="b1w"))
+            b1b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b1b")
+            b1lo = tf.matmul(self.tf_s_sliding, b1w) + b1b
+            b1o = tf.nn.relu(b1lo)
+            b2w = 0.01 * tf.Variable(tf.random_normal([256, 256]), name="b2w")
+            b2b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b2b")
+            b2lo = tf.matmul(b1o, b2w) + b2b
+            b2o = tf.nn.relu(b2lo)
+            tf_s_others = tf.reshape(self.tf_s_others, [-1, self.N_OTHERS])
+            input_size3 = 256 + self.N_OTHERS
+            output_size3 = 1024
+            input_size4 = 1024
+            output_size4 = 512
+            input_size5 = 512
+            output_size5 = 128
+            input_size6 = 128
+            output_size6 = self.N_ACTIONS
+            b3w = 0.01 * tf.Variable(tf.random_normal([input_size3, output_size3]), name="b3w")
+            b3b = tf.Variable(tf.zeros([1, output_size3]), name="b3b")
+            myreal_input = tf.concat([b2o, tf_s_others], 1)
+            b3lo = tf.matmul(myreal_input, b3w) + b3b
+            b3o = tf.nn.relu(b3lo)
+            b4w = 0.01 * tf.Variable(tf.random_normal([input_size4, output_size4]), name="b4w")
+            b4b = tf.Variable(tf.zeros([1, output_size4]), name="b4b")
+            b4lo = tf.matmul(b3o, b4w) + b4b
+            b4o = tf.nn.relu(b4lo)
+            b5w = 0.01 * tf.Variable(tf.random_normal([input_size5, output_size5]), name="b5w")
+            b5b = tf.Variable(tf.zeros([1, output_size5]), name="b5b")
+            b5lo = tf.matmul(b4o, b5w) + b5b
+            b5o = tf.nn.relu(b5lo)
+            b6w = 0.01 * tf.Variable(tf.random_normal([input_size6, output_size6]), name="b6w")
+            b6b = tf.Variable(tf.zeros([1, output_size6]), name="b6b")
+            a2 = tf.nn.softmax(tf.matmul(b5o,b6w)+b6b)
+        return a
+
 
     def learn(self):
         self.learning_step += 1
@@ -140,10 +174,18 @@ class PretrainActor(object):
         return s_sliding_list,s_others_list,s_a_list
 
     def save(self):
-        self.Saver.save(self.sess,'./model/model.ckpt')
+        self.ae_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='actor/eval')
+        self.at_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='actor/target')
+        for ta, ea in zip(self.at_params, self.ae_params):
+            tf.assign(ea,ta)
+            print(ea)
+        saver = tf.train.Saver(self.ae_params,self.at_params)
+        saver.save(self.sess,'./model/model.ckpt')
 
 PA = PretrainActor()
 PA.read_data()
 for i in range(10000):
     PA.learn()
+    if i == 100:
+        PA.save()
 

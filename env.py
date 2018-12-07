@@ -1,9 +1,11 @@
 from car import Car
-import nn
+import actor_critic
 import random
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+
+ac = actor_critic.Actor_Critic()
 
 class Env(object):
     def __init__(self):
@@ -93,7 +95,8 @@ class Env(object):
     def step(self):
         for car in self.Cars:
             car.state = self.perception(car)
-            action = nn.choose_action(car.state[0],car.state[1])
+            action = ac.choose_action(car.state)
+            #print(action)
             car.update_v(action)
         for car in self.Cars:
             car.play()
@@ -101,20 +104,20 @@ class Env(object):
         for i in range(self.car_nums):
             self.Cars[i].state_ = self.perception(self.Cars[i])
             reward,done = self.cal_reward(self.Cars[i])
-            nn.store_transition(self.Cars[i].state[0],self.Cars[i].state[1],self.Cars[i].lastaction,reward,self.Cars[i].state_[0],self.Cars[i].state_[1],done)
+            ac.store_transition(self.Cars[i].state[0],self.Cars[i].state[1],self.Cars[i].lastaction,reward,self.Cars[i].state_[0],self.Cars[i].state_[1],done)
             self.Cars[i].ep_r += reward
             self.Cars[i].done = done
         for car in self.Cars:
             if car.done == 1:
-                print("ep_r:",round(car.ep_r,2),"epsilon:",nn.EPSILON)
+                print("ep_r:",round(car.ep_r,2),"epsilon:",ac.EPSILON)
                 print("now_cars:",self.car_nums)
                 print("waiting_cars:",self.Waiting_car_nums)
                 success = self.reset(car,FROMCARS=1)
 
-        if (nn.EPSILON<0.9):
-            nn.EPSILON += 0.0000002
-        if (nn.MEMORY_COUNTER>nn.MEMORY_CAPACITY):
-            nn.learn()
+        if (ac.EPSILON<0.9):
+            ac.EPSILON += 0.0000002
+        if (ac.pointer>ac.MEMORY_CAPACITY):
+            ac.learn()
 
         CAR_IN_START = 0
         for car in self.Cars:
@@ -233,8 +236,8 @@ if __name__ == '__main__':
         turns += 1
         multi_env.step()
         #print(multi_env.car_nums)
-        if nn.EPSILON>0.9:
-            nn.saver.save(nn.sess, './model.ckpt', global_step=turns + 1)
+        if ac.EPSILON>0.9:
+            ac.saver()
 
             plt.cla()
             vehicle_x = [car.x for car in multi_env.Cars]
