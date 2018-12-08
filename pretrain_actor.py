@@ -35,9 +35,11 @@ class PretrainActor(object):
         self.VehState = []
         self.action = []
 
-        self.a = self.build_actor()
+        self.a,self.a2 = self.build_actor()
         self.loss = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(self.a, self.tf_a), axis=1))
-        self.train = tf.train.AdamOptimizer(self.LR).minimize(self.loss)
+        self.loss2 = tf.reduce_mean(tf.reduce_sum(tf.squared_difference(self.a2, self.tf_a),axis=1))
+        self.train1 = tf.train.AdamOptimizer(self.LR).minimize(self.loss)
+        self.train2 = tf.train.AdamOptimizer(self.LR).minimize(self.loss2)
         self.sess.run(tf.global_variables_initializer())
 
     def read_data(self):
@@ -84,7 +86,7 @@ class PretrainActor(object):
 
     def build_actor(self):
         with tf.variable_scope("actor/target"):
-            b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256], name="b1w"))
+            b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256]),name="b1w")
             b1b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b1b")
             b1lo = tf.matmul(self.tf_s_sliding, b1w) + b1b
             b1o = tf.nn.relu(b1lo)
@@ -118,7 +120,7 @@ class PretrainActor(object):
             b6b = tf.Variable(tf.zeros([1, output_size6]), name="b6b")
             a = tf.nn.softmax(tf.matmul(b5o,b6w)+b6b)
         with tf.variable_scope("actor/eval"):
-            b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256], name="b1w"))
+            b1w = 0.01 * tf.Variable(tf.random_normal([self.N_SLIDING, 256]),name="b1w")
             b1b = 0.01 * tf.Variable(tf.zeros([1, 256]), name="b1b")
             b1lo = tf.matmul(self.tf_s_sliding, b1w) + b1b
             b1o = tf.nn.relu(b1lo)
@@ -151,15 +153,16 @@ class PretrainActor(object):
             b6w = 0.01 * tf.Variable(tf.random_normal([input_size6, output_size6]), name="b6w")
             b6b = tf.Variable(tf.zeros([1, output_size6]), name="b6b")
             a2 = tf.nn.softmax(tf.matmul(b5o,b6w)+b6b)
-        return a
-
+        return a,a2
 
     def learn(self):
         self.learning_step += 1
         s_sliding_list,s_others_list,s_a_list = self.read_batch()
-        self.sess.run(self.train,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a:s_a_list})
+        self.sess.run(self.train1,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a:s_a_list})
+        self.sess.run(self.train2,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a: s_a_list})
         if self.learning_step % 100 == 0:
-            print("loss = ",self.sess.run(self.loss,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a:s_a_list}))
+            print("loss1 = ",self.sess.run(self.loss,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a:s_a_list}))
+            print("loss2 = ",self.sess.run(self.loss2,{self.tf_s_sliding:s_sliding_list,self.tf_s_others:s_others_list,self.tf_a:s_a_list}))
 
     def read_batch(self):
         s_sliding_list = []
@@ -175,17 +178,17 @@ class PretrainActor(object):
 
     def save(self):
         self.ae_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='actor/eval')
-        self.at_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='actor/target')
-        for ta, ea in zip(self.at_params, self.ae_params):
-            tf.assign(ea,ta)
-            print(ea)
-        saver = tf.train.Saver(self.ae_params,self.at_params)
+        for v in self.ae_params:
+            print(v.name)
+
+        saver = tf.train.Saver()
         saver.save(self.sess,'./model/model.ckpt')
+        print("save done!")
 
 PA = PretrainActor()
 PA.read_data()
 for i in range(10000):
     PA.learn()
-    if i == 100:
+    if i == 9999:
         PA.save()
 
