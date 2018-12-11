@@ -1,4 +1,4 @@
-#add pretrain net for actor
+#add  net for actor
 #outline:
 #  pretrained actor
 #  actor-critic --> DDPG
@@ -17,6 +17,9 @@ import numpy as np
 
 class Actor_Critic(object):
     def __init__(self):
+        self.r_list = []
+        self.q_list = []
+
         self.EPSILON = 0.1
         self.BATCH_SIZE = 32
         self.TAU = 0.01
@@ -37,7 +40,7 @@ class Actor_Critic(object):
         self.sess = tf.Session()
         self.learning_step = 0
 
-        self.MEMORY_CAPACITY = 10000
+        self.MEMORY_CAPACITY = 1000
         self.pointer = 0
         self.memory = np.zeros((self.MEMORY_CAPACITY, (self.N_SLIDING+self.N_OTHERS) * 2 + 1 + 1), dtype=np.float32)
 
@@ -72,7 +75,7 @@ class Actor_Critic(object):
         self.atrain_supervised = tf.train.AdamOptimizer(self.LR_SA).minimize(self.a_loss_supervised,var_list=self.ae_params)
 
         self.init_all_weights("./model/model.ckpt",self.sess)
-        self.sess.run(tf.global_variables_initializer())
+        #self.sess.run(tf.global_variables_initializer())
 
     def build_actor(self,tf_s_sliding,tf_s_others,scope,trainable):
         with tf.variable_scope(scope):
@@ -160,7 +163,11 @@ class Actor_Critic(object):
         s_sliding = s[0][np.newaxis, :]
         s_others = s[1][np.newaxis, :]
 
-        action = np.argmax(self.sess.run(self.a, {self.tf_s_sliding: s_sliding, self.tf_s_others:s_others})[0])
+        if np.random.uniform() < self.EPSILON:
+            action = np.argmax(self.sess.run(self.a, {self.tf_s_sliding: s_sliding, self.tf_s_others: s_others})[0])
+
+        else:
+            action = np.random.randint(0, self.N_ACTIONS)
         return action
 
     def learn(self):
@@ -177,6 +184,9 @@ class Actor_Critic(object):
 
         self.sess.run(self.atrain_reinforce, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others})
         self.sess.run(self.ctrain, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
+
+        self.sess.run(self.atrain_supervised,{self.tf_s_sliding:bs_sliding,self.tf_s_others:bs_others,self.tf_a:ba})
+        print("learning")
 
     def init_all_weights(self, weight_file, sess):
         variables = tf.contrib.framework.get_variables_to_restore()
@@ -197,5 +207,5 @@ class Actor_Critic(object):
         return not_initialized_vars
 
     def saver(self):
-        tf.train.Saver.save(self.sess, './ac_model/model.ckpt')
+        tf.train.Saver().save(self.sess, './ac_model/model.ckpt')
 

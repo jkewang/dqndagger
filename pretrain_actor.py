@@ -30,7 +30,7 @@ class PretrainActor(object):
 
         self.filename = "pretrained_data.txt"
         self.f = open(self.filename)
-        self.MAXLINE = 79653
+        self.MAXLINE = 426607
         self.OccState = []
         self.VehState = []
         self.action = []
@@ -65,6 +65,7 @@ class PretrainActor(object):
             VehStr = VehStr.replace("\n","")
             OccSpecific = OccStr.split(" ")
 
+            print(OccSpecific)
             for item in OccSpecific:
                 Occ_i.append(float(item))
 

@@ -14,6 +14,7 @@ class Env(object):
         self.car_nums = 9
         self.Waiting_car_nums = 0
         self.used_car_nums = 9
+        self.r_list = []
         #generte 9 cars' position and velocity
         print("initialing")
         #left 3:
@@ -115,7 +116,7 @@ class Env(object):
                 success = self.reset(car,FROMCARS=1)
 
         if (ac.EPSILON<0.9):
-            ac.EPSILON += 0.0000002
+            ac.EPSILON += 0.00002
         if (ac.pointer>ac.MEMORY_CAPACITY):
             ac.learn()
 
@@ -237,7 +238,14 @@ if __name__ == '__main__':
         multi_env.step()
         #print(multi_env.car_nums)
         if ac.EPSILON>0.9:
-            ac.saver()
+            lenth = len(multi_env.r_list)
+            xx = range(lenth)
+            plt.plot(xx,multi_env.r_list)
+            plt.show()
+            plt.pause(1000)
+
+            """
+            #ac.saver()
 
             plt.cla()
             vehicle_x = [car.x for car in multi_env.Cars]
@@ -249,3 +257,4 @@ if __name__ == '__main__':
             except:
                 pass
             plt.show()
+            """
