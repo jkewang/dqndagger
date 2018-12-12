@@ -110,13 +110,14 @@ class Env(object):
             self.Cars[i].done = done
         for car in self.Cars:
             if car.done == 1:
+                self.r_list.append(car.ep_r)
                 print("ep_r:",round(car.ep_r,2),"epsilon:",ac.EPSILON)
                 print("now_cars:",self.car_nums)
                 print("waiting_cars:",self.Waiting_car_nums)
                 success = self.reset(car,FROMCARS=1)
 
         if (ac.EPSILON<0.9):
-            ac.EPSILON += 0.00002
+            ac.EPSILON += 0.0000002
         if (ac.pointer>ac.MEMORY_CAPACITY):
             ac.learn()
 
@@ -180,10 +181,12 @@ class Env(object):
 
         if collision == 1:
             reward = -10
+            print("collision!")
             done = 1
         elif arrive == 1:
             reward = 10
             done = 1
+            print("arrive!")
         elif outline == 1:
             reward = -5
             done = 1
@@ -238,12 +241,13 @@ if __name__ == '__main__':
         multi_env.step()
         #print(multi_env.car_nums)
         if ac.EPSILON>0.9:
+
+            """
             lenth = len(multi_env.r_list)
             xx = range(lenth)
             plt.plot(xx,multi_env.r_list)
             plt.show()
             plt.pause(1000)
-
             """
             #ac.saver()
 
@@ -257,4 +261,3 @@ if __name__ == '__main__':
             except:
                 pass
             plt.show()
-            """

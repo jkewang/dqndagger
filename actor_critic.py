@@ -20,7 +20,7 @@ class Actor_Critic(object):
         self.r_list = []
         self.q_list = []
 
-        self.EPSILON = 0.1
+        self.EPSILON = 0.5
         self.BATCH_SIZE = 32
         self.TAU = 0.01
         self.GAMMA = 0.9
@@ -188,10 +188,10 @@ class Actor_Critic(object):
 
         self.sess.run(self.atrain_reinforce, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others})
         self.sess.run(self.ctrain, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
-        merged = tf.summary.merge_all()
-        if self.learn_num %100==0:
-            summary,_ = self.sess.run([merged,self.atrain_reinforce],{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
-            self.writer.add_summary(summary,self.pointer)
+        #merged = tf.summary.merge_all()
+        #if self.learn_num %100==0:
+        #    summary,_ = self.sess.run([merged,self.atrain_reinforce],{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
+        #    self.writer.add_summary(summary,self.pointer)
         self.learn_num += 1
         #print("a_loss:",self.sess.run(self.a_loss,{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_}))
         #print("c_loss:",self.sess.run(self.td_error,{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_}))
