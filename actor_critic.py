@@ -42,6 +42,7 @@ class Actor_Critic(object):
 
         self.MEMORY_CAPACITY = 1000
         self.pointer = 0
+        self.learn_num = 0
         self.memory = np.zeros((self.MEMORY_CAPACITY, (self.N_SLIDING+self.N_OTHERS) * 2 + 1 + 1), dtype=np.float32)
 
         with tf.variable_scope('actor'):
@@ -74,6 +75,9 @@ class Actor_Critic(object):
         self.atrain_reinforce = tf.train.AdamOptimizer(self.LR_A).minimize(self.a_loss, var_list=self.ae_params)
         self.atrain_supervised = tf.train.AdamOptimizer(self.LR_SA).minimize(self.a_loss_supervised,var_list=self.ae_params)
 
+        self.writer = tf.summary.FileWriter("logs/", self.sess.graph)
+        tf.summary.scalar('c_loss:', self.td_error)
+        tf.summary.scalar('a_loss', self.a_loss)
         self.init_all_weights("./model/model.ckpt",self.sess)
         #self.sess.run(tf.global_variables_initializer())
 
@@ -184,9 +188,14 @@ class Actor_Critic(object):
 
         self.sess.run(self.atrain_reinforce, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others})
         self.sess.run(self.ctrain, {self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
-
-        self.sess.run(self.atrain_supervised,{self.tf_s_sliding:bs_sliding,self.tf_s_others:bs_others,self.tf_a:ba})
-        print("learning")
+        merged = tf.summary.merge_all()
+        if self.learn_num %100==0:
+            summary,_ = self.sess.run([merged,self.atrain_reinforce],{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_})
+            self.writer.add_summary(summary,self.pointer)
+        self.learn_num += 1
+        #print("a_loss:",self.sess.run(self.a_loss,{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_}))
+        #print("c_loss:",self.sess.run(self.td_error,{self.tf_s_sliding: bs_sliding,self.tf_s_others:bs_others, self.a: ba, self.R: br, self.tf_s_sliding_: bs_sliding_,self.tf_s_others_:bs_others_}))
+        #self.sess.run(self.atrain_supervised,{self.tf_s_sliding:bs_sliding,self.tf_s_others:bs_others,self.tf_a:ba})
 
     def init_all_weights(self, weight_file, sess):
         variables = tf.contrib.framework.get_variables_to_restore()
